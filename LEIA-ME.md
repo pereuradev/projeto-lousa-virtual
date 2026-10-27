@@ -41,6 +41,19 @@ Com **duas mãos em qualquer outra pose**, o aplicativo suspende desenho e escol
 
 Todos os gestos de controle ficam suspensos em pausas, janelas de confirmação e desenho com mouse. Os botões de cor continuam clicáveis, e as teclas 1–5 continuam funcionando.
 
+## Zoom com olhos e sobrancelhas
+
+1. Com o rosto inteiro visível, mantenha **somente o olho esquerdo fechado por 2 segundos contínuos**, deixando o direito aberto. Aguarde a indicação de ajuste de zoom. Esquerdo e direito correspondem à pessoa, independentemente da prévia espelhada.
+2. **Abra os dois olhos e relaxe as sobrancelhas** antes de começar a ajustar. Esse intervalo neutro evita que o movimento de fechar o olho altere o zoom.
+3. **Levante as sobrancelhas para ampliar** e **franza/abaixe as sobrancelhas para reduzir**. Relaxe para parar. A porcentagem indica a ampliação atual, entre **50% e 300%**.
+4. Para confirmar, mantenha **somente o olho direito fechado por 2 segundos contínuos**, deixando o esquerdo aberto. O zoom escolhido é mantido e o aplicativo retorna ao desenho. Solte a pinça antes de retomar um traço.
+
+Uma piscada rápida ou os dois olhos fechados não completam os comandos. Durante o modo Zoom, as mãos não desenham, não escolhem cor e não limpam a lousa. Perder o rosto, pausar, abrir Ajuda ou desconectar a câmera interrompe a sessão e os temporizadores, mantendo a visualização atual. O rastreamento facial não é necessário para desenhar normalmente com mãos ou mouse.
+
+Os controles **−**, **+** e **Restaurar visão** também funcionam com o mouse. Restaurar volta a **100%**, que encaixa a lousa inteira na área disponível. O zoom é centralizado: em ampliações maiores, as bordas ficam fora da visualização. O zoom não altera os pixels do desenho, a espessura real do traço, o histórico nem o PNG exportado, que sempre contém a lousa completa.
+
+Esta versão usa limiares iniciais para olhos e sobrancelhas. A sensibilidade precisa ser conferida com a pessoa diante da webcam; óculos, iluminação, posição do rosto e diferenças entre expressões podem influenciar a leitura. Se o modelo facial estiver ausente ou inválido, execute **Instalar ou reparar.cmd**; os recursos com mãos e mouse permanecem disponíveis.
+
 ## Controles
 
 | Ação | Controle |
@@ -52,6 +65,10 @@ Todos os gestos de controle ficam suspensos em pausas, janelas de confirmação 
 | Desfazer até 25 ações | Z ou Ctrl+Z |
 | Limpar | C, com confirmação; Z pode desfazer |
 | Limpar pela câmera | DUAS palmas abertas por 2 s; feche uma antes para cancelar; Z desfaz |
+| Ativar zoom facial | Olho esquerdo fechado por 2 s, direito aberto |
+| Ampliar / reduzir zoom | No modo Zoom, sobrancelhas levantadas / franzidas, com olhos abertos |
+| Confirmar zoom | Olho direito fechado por 2 s, esquerdo aberto |
+| Zoom com mouse | Botões − / + / Restaurar visão |
 | Salvar desenho em PNG | S; nomes únicos, sem sobrescrever |
 | Pausar / retomar gestos | Espaço; mouse continua funcionando |
 | Ajuda e atalhos | Botão Ajuda ou F1; os gestos são suspensos enquanto a janela estiver aberta |
@@ -62,7 +79,7 @@ A prévia é espelhada. O cursor usa a região central da câmera para facilitar
 
 ## Privacidade
 
-Este aplicativo processa frames na memória do computador. Não faz upload de imagens, não grava vídeo e não usa microfone. Somente o desenho é exportado quando você solicita. A câmera é liberada ao desconectar ou fechar. Internet é usada na instalação ou reparo para baixar bibliotecas e o modelo.
+Este aplicativo processa frames de mãos e rosto na memória do computador. Não faz upload de imagens, não grava vídeo e não usa microfone. Não cria cadastro de rostos nem identifica pessoas. Somente o desenho é exportado quando você solicita. A câmera é liberada ao desconectar ou fechar. Internet é usada na instalação ou reparo para baixar bibliotecas e os modelos.
 
 A documentação da biblioteca MediaPipe informa processamento local das imagens e coleta de métricas de desempenho/utilização; por isso, não se promete ausência absoluta de comunicação de rede da biblioteca. Consulte o [aviso oficial](https://pypi.org/project/mediapipe/). Nenhum serviço online é usado pelo código do aplicativo durante o desenho.
 
@@ -80,7 +97,7 @@ Falhas de inicialização são registradas em **erro.log**, sem imagens. Falhas 
 
 Ambiente validado: Python **3.12.13 x64**, MediaPipe **1.1.1**, OpenCV contrib **4.14.0.94**, Pillow **12.2.0**. O Python fica em `.python` e as bibliotecas em `.venv`, dentro deste projeto. O instalador obtém esse Python dentro do projeto; não é necessária uma instalação global de Python.
 
-Na instalação de um clone ou ZIP, execute **Instalar ou reparar.cmd** antes do iniciador. Esse script sincroniza as versões de `requirements.lock.txt` e confere o SHA256 do modelo. Requer internet e [uv](https://docs.astral.sh/uv/getting-started/installation/) disponível no computador. Não apaga desenhos. Preserve o caminho da pasta; ambientes virtuais não são portáteis. Se mover o projeto, remova somente a pasta `.venv` gerada anteriormente e execute o instalador novamente para recriar o ambiente no novo caminho. Preserve a pasta `desenhos`.
+Na instalação de um clone ou ZIP, execute **Instalar ou reparar.cmd** antes do iniciador. Esse script sincroniza as versões de `requirements.lock.txt` e confere o SHA256 dos modelos. Ao atualizar uma instalação anterior, execute-o novamente para obter o modelo facial. Requer internet e [uv](https://docs.astral.sh/uv/getting-started/installation/) disponível no computador. Não apaga desenhos. Preserve o caminho da pasta; ambientes virtuais não são portáteis. Se mover o projeto, remova somente a pasta `.venv` gerada anteriormente e execute o instalador novamente para recriar o ambiente no novo caminho. Preserve a pasta `desenhos`.
 
 Comandos no PowerShell, dentro desta pasta:
 
@@ -101,7 +118,10 @@ O diagnóstico abre a webcam brevemente, executa inferência e imprime apenas co
 - `lousa/camera.py`: captura OpenCV e detector em thread separada.
 - `lousa/drawing.py`: desenho, histórico, PNG e filtro de gestos.
 - `lousa/controls.py`: contagem de dedos por 5 s e limpeza com duas mãos por 2 s.
+- `lousa/facial.py`: temporizadores dos olhos e comandos das sobrancelhas.
+- `lousa/viewport.py`: zoom e transformação de coordenadas.
 - `models/hand_landmarker.task`: modelo oficial, float16, versão 1, baixado pelo instalador e não versionado.
+- `models/face_landmarker.task`: modelo facial oficial, float16, versão 1, baixado pelo instalador e não versionado.
 - `tests/`: verificações automatizadas sem webcam.
 - `VALIDACAO.md`: resultados verificados nesta entrega.
 
@@ -109,4 +129,6 @@ Fontes primárias: [MediaPipe Hand Landmarker para Python](https://ai.google.dev
 
 SHA256 do modelo: `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1`.
 
-Limitações: até duas mãos rastreadas, desenho e escolha de cor com exatamente uma mão, desenho em 2D; oclusão, pouca luz e movimentos rápidos reduzem a precisão. A distância ideal e os limiares podem variar com a webcam. Não inclui reconhecimento de texto nem colaboração online.
+Fonte facial: [MediaPipe Face Landmarker para Python](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker/python), [modelo facial versão 1](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task). SHA256: `64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`.
+
+Limitações: até duas mãos e um rosto rastreados, desenho e escolha de cor com exatamente uma mão, desenho em 2D; oclusão, pouca luz e movimentos rápidos reduzem a precisão. A distância ideal e os limiares podem variar com a pessoa e a webcam. Nem toda pessoa consegue fechar cada olho separadamente com facilidade; os botões de zoom continuam disponíveis. Não inclui reconhecimento de texto nem colaboração online.

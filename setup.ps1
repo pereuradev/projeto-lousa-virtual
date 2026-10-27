@@ -21,15 +21,27 @@ if (-not (Test-Path -LiteralPath $pythonExe)) {
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias. Verifique a internet.' }
 $modelDir = Join-Path $projectRoot 'models'
 New-Item -ItemType Directory -Path $modelDir -Force | Out-Null
-$modelPath = Join-Path $modelDir 'hand_landmarker.task'
-$expected = 'fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1'
-if (-not (Test-Path -LiteralPath $modelPath) -or (Get-FileHash -LiteralPath $modelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
-    $temporaryModel = Join-Path $modelDir 'hand_landmarker.download'
-    Invoke-WebRequest -UseBasicParsing -Uri 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' -OutFile $temporaryModel
-    if ((Get-FileHash -LiteralPath $temporaryModel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
-        throw 'O modelo baixado nao passou na verificacao SHA256.'
+$models = @(
+    @{
+        Name = 'hand_landmarker'
+        Sha256 = 'fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1'
+    },
+    @{
+        Name = 'face_landmarker'
+        Sha256 = '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff'
     }
-    Move-Item -LiteralPath $temporaryModel -Destination $modelPath -Force
+)
+foreach ($model in $models) {
+    $modelPath = Join-Path $modelDir ($model.Name + '.task')
+    if (-not (Test-Path -LiteralPath $modelPath) -or (Get-FileHash -LiteralPath $modelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $model.Sha256) {
+        $temporaryModel = Join-Path $modelDir ($model.Name + '.download')
+        $modelUrl = 'https://storage.googleapis.com/mediapipe-models/{0}/{0}/float16/1/{0}.task' -f $model.Name
+        Invoke-WebRequest -UseBasicParsing -Uri $modelUrl -OutFile $temporaryModel
+        if ((Get-FileHash -LiteralPath $temporaryModel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $model.Sha256) {
+            throw ('O modelo {0} nao passou na verificacao SHA256.' -f $model.Name)
+        }
+        Move-Item -LiteralPath $temporaryModel -Destination $modelPath -Force
+    }
 }
 & $pythonExe -c "import tkinter, cv2, mediapipe, PIL; print('Bibliotecas carregadas com sucesso.')"
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao carregar bibliotecas. Consulte LEIA-ME.md.' }
