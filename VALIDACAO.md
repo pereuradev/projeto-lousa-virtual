@@ -31,7 +31,7 @@ O modelo facial oficial, float16 versão 1, foi baixado do Google e teve seu SHA
 
 Os testes automatizados exercitam temporizadores e transições faciais com sinais sintéticos, transformações de coordenadas, preservação do desenho e comunicação entre câmera e interface. A suíte inclui os testes anteriores de pinça, cores por joinha, limpeza, histórico e PNG.
 
-**147 testes passaram, sem testes ignorados**, no Windows com os widgets Tk reais. São 81 verificações anteriores preservadas, 30 do controlador facial, 9 da geometria de zoom, 11 do transporte e segurança, 8 da interface e 8 da integração da câmera.
+**148 testes passaram, sem testes ignorados**, no Windows com os widgets Tk reais. São 81 verificações anteriores preservadas, 30 do controlador facial, 9 da geometria de zoom, 11 do transporte e segurança, 8 da interface e 9 da integração da câmera. A suíte também passou na instalação da área de trabalho.
 
 Os testes do worker executam o fluxo completo com observações sintéticas, incluindo ativação, ajuste, confirmação, perda de mão, soltura obrigatória e novo traço. Verificam também rosto sem espelhamento, falha facial preservando os recursos das mãos, encerramento dos detectores e rejeição de comandos antigos de cor, limpeza e zoom.
 

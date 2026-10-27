@@ -81,7 +81,7 @@ Depois da instalação, na raiz do projeto:
 & '.\.venv\Scripts\python.exe' main.py --camera 0
 ```
 
-Os **147 testes automatizados** cobrem desenho, PNG, histórico, contagem de dedos, ativação por joinha, zoom, temporização facial, cancelamentos e comunicação entre a câmera e a interface. Os testes não abrem a webcam.
+Os **148 testes automatizados** cobrem desenho, PNG, histórico, contagem de dedos, ativação por joinha, zoom, temporização facial, cancelamentos e comunicação entre a câmera e a interface. Os testes não abrem a webcam.
 
 O diagnóstico abaixo abre a câmera brevemente e retorna somente contagens e erros, sem salvar frames:
 
