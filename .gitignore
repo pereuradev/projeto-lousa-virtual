@@ -1,0 +1,17 @@
+.venv/
+.python/
+.cache/
+__pycache__/
+*.pyc
+desenhos/
+erro.log
+*.log
+models/*.task
+models/*.download
+.env
+.env.*
+!.env.example
+work/
+outputs/
+.idea/
+.vscode/
