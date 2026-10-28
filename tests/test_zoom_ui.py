@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image, ImageChops
 
 from lousa.app import App, tk
-from lousa.camera import CameraWorker
+from lousa.camera import CameraSafety, CameraWorker
 from lousa.controls import ControlState
 from lousa.facial import FacialState
 
@@ -200,6 +200,148 @@ class ZoomUiTests(unittest.TestCase):
         app.mouse_end()
         self.assertTrue(worker.control_context()[0])
         self.assertFalse(app.gesture_ready)
+
+    def test_missing_face_and_activation_readiness_have_distinct_visible_feedback(self):
+        app = self.app
+        worker = self._worker()
+        epoch = worker.control_context()[1]
+        for status, present, expected in (
+                ("no_face", False, "Rosto não detectado"),
+                ("preparing", True, "dois olhos abertos"),
+                ("ready", True, "Pronto para ativar"),
+                ("right_not_open", True, "DIREITO aberto")):
+            with self.subTest(status=status):
+                worker._update_safety(FacialState(status=status), [], 100., epoch,
+                                      "Zoom facial disponível", face_present=present)
+                with patch("lousa.app.time.monotonic", return_value=100.):
+                    app._tick()
+                self.assertIn(expected, app.face_status.get())
+                self.assertNotIn("disponível", app.face_status.get())
+
+    def test_post_entry_feedback_matches_the_gate_and_ready_adjustments(self):
+        app = self.app
+        worker = self._worker()
+        epoch = worker.control_context()[1]
+        for status, expected, mode in (
+                ("eyes_need_open", "Abra os dois olhos", "Preparando ajustes"),
+                ("relax_brows", "Relaxe as sobrancelhas", "Preparando ajustes"),
+                ("wait_neutral", "sobrancelhas relaxadas", "Preparando ajustes"),
+                ("adjust", "Ajustes prontos", "Ajustando zoom")):
+            with self.subTest(status=status):
+                face = FacialState(mode="zoom", active=True, blocked=True, status=status)
+                worker._update_safety(face, [], 100., epoch, "Zoom facial disponível", face_present=True)
+                with patch("lousa.app.time.monotonic", return_value=100.):
+                    app._tick()
+                self.assertEqual(app.mode_name.get(), mode)
+                self.assertIn(expected, app.control_message.get())
+
+    def test_pause_reports_pause_and_preserves_a_useful_model_error(self):
+        app = self.app
+        worker = self._worker()
+        epoch = worker.control_context()[1]
+        worker._update_safety(FacialState(status="ready"), [], 100., epoch,
+                              "Zoom facial disponível", face_present=True)
+        app.pause()
+        self.assertIn("pausado", app.face_status.get())
+        self.assertNotIn("Pronto", app.face_status.get())
+        error = "Zoom facial indisponível: Modelo facial ausente; execute Instalar ou reparar.cmd."
+        worker._update_safety(FacialState(status="paused"), [], 100.,
+                              worker.control_context()[1], error)
+        with patch("lousa.app.time.monotonic", return_value=100.):
+            app._tick()
+        self.assertEqual(app.face_status.get(), error)
+        app.pause()
+        self.assertEqual(app.face_status.get(), error)
+        app.disconnect()
+        self.assertEqual(app.face_status.get(), "Zoom facial: conecte a câmera")
+
+    def test_idle_feedback_expires_and_rejects_future_observations(self):
+        app = self.app
+        worker = self._worker()
+        epoch = worker.control_context()[1]
+        for status in ("ready", "preparing", "eyes_need_open", "right_not_open", "no_face"):
+            for now in (100.501, 110., 99.999):
+                with self.subTest(status=status, now=now):
+                    worker._update_safety(FacialState(status=status), [], 100., epoch,
+                                          "Zoom facial disponível", face_present=status != "no_face")
+                    with patch("lousa.app.time.monotonic", return_value=now):
+                        app._tick()
+                    self.assertIn("Aguardando leitura", app.face_status.get())
+                    self.assertIn("reconecte a câmera", app.face_status.get())
+                    self.assertNotIn("Pronto", app.face_status.get())
+
+    def test_fresh_face_feedback_accepts_both_age_boundaries(self):
+        for status, expected, present in (("ready", "Pronto para ativar", True),
+                                           ("preparing", "dois olhos abertos", True),
+                                           ("no_face", "Rosto não detectado", False)):
+            safety = CameraSafety(facial=FacialState(status=status), captured_at=100.,
+                                  status="Zoom facial disponível", face_present=present)
+            for now in (100., 100.5):
+                with self.subTest(status=status, now=now):
+                    self.app._face_feedback(safety, enabled=True, now=now)
+                    self.assertIn(expected, self.app.face_status.get())
+
+    def test_feedback_prioritizes_model_error_pause_and_startup_over_freshness(self):
+        app = self.app
+        app.paused = True
+        error = "Zoom facial indisponível: Modelo facial ausente; execute Instalar ou reparar.cmd."
+        unavailable = CameraSafety(status=error)
+        app._face_feedback(unavailable, enabled=False, now=110.)
+        self.assertEqual(app.face_status.get(), error)
+        startup = CameraSafety(status="Zoom facial iniciando")
+        app._face_feedback(startup, enabled=False, now=110.)
+        self.assertIn("pausado", app.face_status.get())
+        app.paused = False
+        app._face_feedback(startup, enabled=False, now=110.)
+        self.assertIn("suspenso", app.face_status.get())
+        app._face_feedback(startup, enabled=True, now=110.)
+        self.assertEqual(app.face_status.get(), "Zoom facial iniciando")
+
+    def test_facial_feedback_text_fits_reserved_lines_at_minimum_window_size(self):
+        app = self.app
+        self.root.deiconify()
+        sidebar = app.preview.master
+        face_label = next(widget for widget in sidebar.winfo_children()
+                          if isinstance(widget, tk.Label)
+                          and str(widget.cget("textvariable")) == str(app.face_status))
+        cases = [(FacialState(status=status), status != "no_face") for status in
+                 ("no_face", "preparing", "ready", "eyes_need_open", "right_not_open", "paused")]
+        cases += [(FacialState(mode="zoom", active=True, blocked=True, status=status), True)
+                  for status in ("eyes_need_open", "relax_brows", "wait_neutral", "adjust", "left_not_open")]
+        cases += [(FacialState(mode=mode, active=mode == "confirming_zoom", blocked=True,
+                               progress=0.5, status=status), True)
+                  for mode, status in (("arming_zoom", "hold_left"), ("confirming_zoom", "hold_right"))]
+
+        def assert_text_fits(label):
+            probe = tk.Label(self.root, text=label.cget("text") if not label.cget("textvariable")
+                             else self.root.getvar(label.cget("textvariable")),
+                             font=label.cget("font"), wraplength=label.cget("wraplength"),
+                             justify=label.cget("justify"), padx=label.cget("padx"),
+                             pady=label.cget("pady"))
+            try:
+                self.assertLessEqual(probe.winfo_reqheight(), label.winfo_height())
+            finally:
+                probe.destroy()
+
+        for state, present in cases:
+            with self.subTest(status=state.status, mode=state.mode):
+                safety = CameraSafety(facial=state, captured_at=100., status="Zoom facial disponível", face_present=present)
+                app._face_feedback(safety, enabled=True, now=100.)
+                app.facial_state = state
+                app._control_feedback(ControlState())
+                self.root.update_idletasks()
+                assert_text_fits(face_label)
+                assert_text_fits(app.control_label)
+        for error in ("Modelo facial ausente", "Modelo facial inválido"):
+            with self.subTest(error=error):
+                safety = CameraSafety(status=f"Zoom facial indisponível: {error}; execute Instalar ou reparar.cmd.")
+                app._face_feedback(safety, enabled=False)
+                self.root.update_idletasks()
+                assert_text_fits(face_label)
+        app._face_feedback(CameraSafety(status="Zoom facial disponível"), enabled=True, now=110.)
+        self.root.update_idletasks()
+        assert_text_fits(face_label)
+        self.root.withdraw()
 
     def test_window_sizes_keep_sidebar_and_buttons_fully_visible(self):
         def descendants(widget):

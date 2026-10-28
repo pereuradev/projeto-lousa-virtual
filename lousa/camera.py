@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .drawing import GestureFilter
 from .controls import ControlGestures
-from .facial import FacialState, FacialZoom, scores_from_result
+from .facial import FacialState, FacialZoom, facial_status_message, scores_from_result
 
 MODEL_SHA256 = "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
 FACE_MODEL_SHA256 = "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
@@ -260,7 +260,9 @@ class CameraWorker(threading.Thread):
                         face_status = f"Zoom facial indisponível: {exc}"
                         previous_face_center = None
                 face = facial.update(face_scores, now, enabled=enabled)
-                safety = self._update_safety(face, hands, now, epoch, face_status,
+                status = (facial_status_message(face, face_present=face_scores is not None)
+                          if face_tracker is not None else face_status)
+                safety = self._update_safety(face, hands, now, epoch, status,
                                              face_present=face_scores is not None)
                 face_blocks = safety.facial.blocked or safety.release_required
                 if face_blocks:

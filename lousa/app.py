@@ -15,7 +15,7 @@ from PIL import Image, ImageTk
 from .camera import CameraWorker, diagnose
 from .drawing import Board, GestureFilter
 from .controls import ControlState
-from .facial import FacialState
+from .facial import FacialState, facial_status_message
 from .viewport import Viewport
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -201,7 +201,7 @@ class App:
                 "Feche ou retire uma mão antes de completar para cancelar.\n"
                 "No modo Cores, uma mão aberta escolhe Roxo; não limpa. Desfazer recupera o desenho.\n\n"
                 "ZOOM FACIAL — ESQUERDA E DIREITA DA PESSOA\n"
-                "Relaxe o rosto e mantenha só o olho ESQUERDO fechado por 2 s.\n"
+                "Abra os dois olhos; depois mantenha só o ESQUERDO fechado por 2 s.\n"
                 "Reabra os olhos e relaxe as sobrancelhas antes de ajustar.\n"
                 "Levante as sobrancelhas para ampliar; franza/retraia (aproxime e abaixe) para reduzir.\n"
                 "Ajustes funcionam com os dois olhos abertos.\n"
@@ -356,11 +356,17 @@ class App:
         self.control_state = state
         face = getattr(self, "facial_state", FacialState())
         if face.blocked:
-            name = {"arming_zoom": "Ativando zoom", "zoom": "Ajustando zoom",
+            waiting = face.mode == "zoom" and face.status in ("eyes_need_open", "relax_brows", "wait_neutral")
+            name = {"arming_zoom": "Ativando zoom", "zoom": "Preparando ajustes" if waiting else "Ajustando zoom",
                     "confirming_zoom": "Confirmando zoom"}[face.mode]
             self.mode_name.set(name)
             if face.mode == "zoom":
-                message = "Reabra os olhos e relaxe o rosto. Sobrancelhas: levante para ampliar; franza para reduzir. Direito 2 s confirma."
+                message = {
+                    "eyes_need_open": "Abra os dois olhos. Os ajustes aguardam essa abertura; o zoom atual está mantido.",
+                    "relax_brows": "Relaxe as sobrancelhas e mantenha os dois olhos abertos para liberar os ajustes e a confirmação.",
+                    "wait_neutral": "Mantenha os dois olhos abertos e as sobrancelhas relaxadas até os ajustes ficarem prontos.",
+                    "left_not_open": "Para confirmar, mantenha o olho ESQUERDO aberto e só o DIREITO fechado por 2 segundos.",
+                }.get(face.status, "Ajustes prontos. Sobrancelhas: levante para ampliar; franza para reduzir. Só o DIREITO fechado por 2 s confirma.")
             else:
                 eye = "esquerdo" if face.mode == "arming_zoom" else "direito"
                 message = f"{name} · olho {eye}: {face.progress * 2:.1f} de 2 segundos · outro olho aberto"
@@ -392,13 +398,31 @@ class App:
         self.control_message.set(message)
         self._render_control_feedback()
 
+    def _face_feedback(self, safety, enabled, now=None):
+        if not hasattr(self, "face_status"):
+            return
+        if safety.status.startswith("Zoom facial indisponível"):
+            message = safety.status
+        elif not enabled:
+            message = ("Zoom facial pausado.\nRetome os gestos para usar." if self.paused
+                       else "Zoom facial suspenso.\nTermine o uso do mouse ou da Ajuda.")
+        elif safety.status == "Zoom facial iniciando":
+            message = safety.status
+        elif not 0 <= (time.monotonic() if now is None else now) - safety.captured_at <= 0.5:
+            message = "Aguardando leitura do rosto.\nSe persistir, reconecte a câmera."
+        else:
+            message = facial_status_message(safety.facial, face_present=safety.face_present)
+        self.face_status.set(message)
+
     def _sync_controls(self):
         enabled = not (self.paused or self.dialog_open or self.closed or self.source == "mouse"
                        or getattr(self, "mouse_active", False))
         if not enabled:
             self.facial_state = FacialState()
         if self.worker:
-            return enabled, self.worker.set_controls_enabled(enabled)
+            epoch = self.worker.set_controls_enabled(enabled)
+            self._face_feedback(self.worker.safety_context(), enabled)
+            return enabled, epoch
         return enabled, None
 
     def _apply_control_actions(self, enabled, epoch, now):
@@ -537,6 +561,7 @@ class App:
         self.worker.start()
         self.last_hand_time = time.monotonic()
         self.hand_status.set("Iniciando câmera e detector…")
+        self.face_status.set("Zoom facial iniciando")
         self.connect_button.configure(text="Desconectar")
         self.status.set("Abrindo câmera · o mouse já pode ser usado")
 
@@ -564,8 +589,7 @@ class App:
                 self.facial_release_wait = False
                 self.gesture_ready = True
             self.facial_state = safety.facial if enabled else FacialState()
-            if hasattr(self, "face_status"):
-                self.face_status.set(safety.status)
+            self._face_feedback(safety, enabled)
         self._apply_control_actions(enabled, epoch, now)
         latest = None
         if self.worker:

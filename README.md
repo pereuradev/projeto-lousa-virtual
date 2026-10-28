@@ -8,7 +8,7 @@ Lousa virtual para Windows feita em Python, com OpenCV, MediaPipe e uma webcam. 
 - **Ativar as cores:** mantenha apenas o polegar estendido, fazendo um joinha, por **1 segundo**. Solte o joinha antes de escolher.
 - **Escolher uma cor:** no modo Cores, mostre a mesma quantidade de dedos de **uma mão** durante **5 segundos**. Depois da escolha, o aplicativo volta ao desenho.
 - **Limpar:** mantenha **as duas mãos abertas por 2 segundos**. Fechar ou retirar uma delas antes de completar cancela. Desfazer recupera o desenho.
-- **Ativar o zoom:** mantenha **somente o olho esquerdo fechado por 2 segundos**, com o direito aberto. Esquerdo e direito são os seus, mesmo na prévia espelhada.
+- **Ativar o zoom:** olhe de frente com os dois olhos abertos até o aviso de pronto; depois mantenha **somente o olho esquerdo fechado por 2 segundos**, com o direito aberto. Esquerdo e direito são os seus, mesmo na prévia espelhada. A posição das sobrancelhas não impede essa ativação.
 - **Ajustar o zoom:** abra os dois olhos e relaxe as sobrancelhas; depois, **levante as sobrancelhas para ampliar** ou **franza/abaixe para reduzir**. Relaxe para parar o ajuste.
 - **Confirmar o zoom:** mantenha **somente o olho direito fechado por 2 segundos**, com o esquerdo aberto. Depois, solte a pinça antes de voltar a desenhar.
 
@@ -23,6 +23,8 @@ Lousa virtual para Windows feita em Python, com OpenCV, MediaPipe e uma webcam. 
 A contagem de cores fica desligada no modo Desenho para não interferir na preparação da pinça. A interface mostra o modo ativo e o progresso dos gestos. Uma mão aberta não limpa a lousa.
 
 O zoom varia de **50% a 300%** e atua somente na visualização, centralizada na lousa. Durante o ajuste facial, desenho, cores e limpeza ficam suspensos. Os botões **−**, **+** e **Restaurar visão** permitem ajustar a visualização com o mouse. O PNG mantém o desenho inteiro em 1280 × 800 pixels, independentemente do zoom.
+
+O indicador facial distingue rosto não encontrado, preparação, gesto pronto e espera pela abertura dos olhos ou relaxamento das sobrancelhas. Se o rosto sair do enquadramento, a contagem é interrompida; volte a olhar de frente e aguarde o aviso de pronto antes de tentar novamente.
 
 Outros recursos: cinco cores clicáveis, caneta, borracha, espessura ajustável, suavização do cursor, câmera espelhada, seleção de câmera, pausa dos gestos, histórico de até 25 ações e exportação do desenho em **1280 × 800 pixels**.
 
@@ -81,7 +83,7 @@ Depois da instalação, na raiz do projeto:
 & '.\.venv\Scripts\python.exe' main.py --camera 0
 ```
 
-Os **148 testes automatizados** cobrem desenho, PNG, histórico, contagem de dedos, ativação por joinha, zoom, temporização facial, cancelamentos e comunicação entre a câmera e a interface. Os testes não abrem a webcam.
+Os **163 testes automatizados** cobrem desenho, PNG, histórico, contagem de dedos, ativação por joinha, zoom, temporização facial, cancelamentos e comunicação entre a câmera e a interface. Os testes não abrem a webcam.
 
 O diagnóstico abaixo abre a câmera brevemente e retorna somente contagens e erros, sem salvar frames:
 

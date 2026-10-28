@@ -57,6 +57,91 @@ class FacialZoomTests(unittest.TestCase):
         self.assertEqual(len(set(SIGNALS)), 7)
         self.assert_idle(FacialState())
         self.assertEqual(FacialState().generation, 0)
+        self.assertEqual(FacialState().status, "preparing")
+
+    def test_initial_readiness_requires_open_eyes_but_not_neutral_eyebrows(self):
+        resting_brows = face(browInnerUp=0.23)
+        self.assertEqual(self.zoom.update(resting_brows, 0.0).status, "preparing")
+        self.assertEqual(self.zoom.update(resting_brows, 0.199).status, "preparing")
+        ready = self.zoom.update(resting_brows, 0.2)
+        self.assert_idle(ready)
+        self.assertEqual(ready.status, "ready")
+        wink = dict(resting_brows, eyeBlinkLeft=0.9)
+        states = self.hold(wink, 0.3, 1.9)
+        self.assertTrue(all(state.mode == "arming_zoom" and not state.active
+                            and state.status == "hold_left" for state in states))
+        self.assertTrue(self.zoom.update(wink, 2.3).active)
+
+    def test_interrupted_activation_rearms_with_open_eyes_and_resting_brows(self):
+        resting_brows = face(browInnerUp=0.23)
+        wink = dict(resting_brows, eyeBlinkLeft=0.9)
+        self.hold(resting_brows, 0.0, 0.2)
+        self.hold(wink, 0.3, 1.5)
+        self.assert_idle(self.zoom.update(resting_brows, 1.9))
+        self.assert_idle(self.zoom.update(wink, 2.0))
+        ready = self.hold(resting_brows, 2.1, 0.2)[-1]
+        self.assertEqual(ready.status, "ready")
+        self.assertTrue(self.hold(wink, 2.4, 2.0)[-1].active)
+
+    def test_reset_rearms_with_open_eyes_and_resting_brows(self):
+        self.activate()
+        self.zoom.reset()
+        resting_brows = face(browInnerUp=0.23)
+        wink = dict(resting_brows, eyeBlinkLeft=0.9)
+        self.assertTrue(all(not state.active for state in self.hold(wink, 2.4, 2.1)))
+        ready = self.hold(resting_brows, 4.6, 0.2)[-1]
+        self.assertEqual(ready.status, "ready")
+        self.assertTrue(self.hold(wink, 4.9, 2.0)[-1].active)
+
+    def test_entry_feedback_explains_release_gate_before_adjustment(self):
+        self.activate()
+        closed = self.zoom.update(LEFT, 2.4)
+        self.assertEqual(closed.status, "eyes_need_open")
+        self.assertEqual(closed.zoom_factor, 1.0)
+        raised = self.zoom.update(UP, 2.5)
+        self.assertEqual(raised.status, "relax_brows")
+        self.assertEqual(raised.zoom_factor, 1.0)
+        resting_brows = face(browInnerUp=0.23)
+        states = self.hold(resting_brows, 2.6, 0.5)
+        self.assertTrue(all(state.active and state.status == "relax_brows"
+                            and state.zoom_factor == 1.0 for state in states))
+        waiting = self.zoom.update(NEUTRAL, 3.2)
+        self.assertEqual(waiting.status, "wait_neutral")
+        self.assertEqual(self.zoom.update(NEUTRAL, 3.399).status, "wait_neutral")
+        ready = self.zoom.update(NEUTRAL, 3.4)
+        self.assertTrue(ready.active)
+        self.assertEqual(ready.status, "adjust")
+        self.assertEqual(ready.zoom_factor, 1.0)
+        self.assertGreater(self.hold(UP, 3.5, 0.5)[-1].zoom_factor, 1.0)
+
+    def test_feedback_distinguishes_missing_face_from_paused_controls(self):
+        self.assertEqual(self.zoom.update(None, 0.0).status, "no_face")
+        self.hold(NEUTRAL, 0.1, 0.2)
+        self.hold(LEFT, 0.4, 1.5)
+        missing = self.zoom.update(None, 2.0)
+        self.assert_idle(missing)
+        self.assertEqual(missing.status, "no_face")
+        paused = self.zoom.update(NEUTRAL, 2.1, enabled=False)
+        self.assert_idle(paused)
+        self.assertEqual(paused.status, "paused")
+        self.assertEqual(self.zoom.update(NEUTRAL, 2.2).status, "preparing")
+
+    def test_wink_feedback_identifies_the_other_eye_when_it_is_not_open(self):
+        self.hold(NEUTRAL, 0.0, 0.2)
+        unsafe_left = self.zoom.update(face(eyeBlinkLeft=0.9, eyeBlinkRight=0.26), 0.3)
+        self.assert_idle(unsafe_left)
+        self.assertEqual(unsafe_left.status, "right_not_open")
+        self.assertTrue(self.hold(LEFT, 0.4, 2.0)[-1].active)
+        self.hold(NEUTRAL, 2.5, 0.2)
+        unsafe_right = self.zoom.update(face(eyeBlinkLeft=0.26, eyeBlinkRight=0.9), 2.8)
+        self.assertTrue(unsafe_right.active)
+        self.assertEqual(unsafe_right.mode, "zoom")
+        self.assertEqual(unsafe_right.status, "left_not_open")
+        self.assertEqual(unsafe_right.zoom_factor, 1.0)
+        confirming = self.zoom.update(RIGHT, 2.9)
+        self.assertEqual(confirming.mode, "confirming_zoom")
+        self.assertEqual(confirming.status, "hold_right")
+        self.assertEqual(confirming.progress, 0.0)
 
     def test_activation_requires_neutral_face_before_left_wink(self):
         states = self.hold(LEFT, 0.0, 3.0)

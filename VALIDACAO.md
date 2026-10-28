@@ -1,10 +1,11 @@
 # Validação — zoom por olhos e sobrancelhas
 
-Atualização do Projeto Lousa Virtual em 27/10/2026.
+Atualização do Projeto Lousa Virtual em 28/10/2026.
 
 ## Comportamento
 
 - O olho esquerdo da pessoa fechado continuamente por 2 segundos, com o direito aberto, ativa o modo Zoom.
+- A preparação inicial depende apenas dos dois olhos abertos; a posição basal das sobrancelhas não bloqueia a ativação. O indicador facial informa ausência do rosto e os motivos de espera, inclusive a neutralização necessária após entrar no modo.
 - Após abrir os dois olhos e relaxar as sobrancelhas, levantá-las amplia e franzir/abaixar reduz. Relaxar interrompe o ajuste.
 - O olho direito fechado continuamente por 2 segundos, com o esquerdo aberto, confirma a visualização.
 - O zoom é centralizado, entre 50% e 300%, com controles manuais e restauração para 100%.
@@ -31,7 +32,11 @@ O modelo facial oficial, float16 versão 1, foi baixado do Google e teve seu SHA
 
 Os testes automatizados exercitam temporizadores e transições faciais com sinais sintéticos, transformações de coordenadas, preservação do desenho e comunicação entre câmera e interface. A suíte inclui os testes anteriores de pinça, cores por joinha, limpeza, histórico e PNG.
 
-**148 testes passaram, sem testes ignorados**, no Windows com os widgets Tk reais. São 81 verificações anteriores preservadas, 30 do controlador facial, 9 da geometria de zoom, 11 do transporte e segurança, 8 da interface e 9 da integração da câmera. A suíte também passou na instalação da área de trabalho.
+**163 testes passaram, sem testes ignorados**, no Windows com os widgets Tk reais. São 81 verificações anteriores preservadas, 36 do controlador facial, 9 da geometria de zoom, 11 do transporte e segurança, 15 da interface e 11 da integração da câmera.
+
+A correção de ativação tem regressões específicas para sobrancelhas em posição basal acima do limite de neutralidade: isso não bloqueia mais o gesto inicial do olho esquerdo. A neutralidade após entrar no modo continua exigida. Os indicadores foram conferidos com 13 combinações de fase e motivo e dois erros de modelo, respeitando três linhas na lateral e duas no feedback da lousa em 1000 × 640.
+
+O aviso de prontidão também exige uma observação atual, com idade de até 0,5 segundo. Leituras vencidas ou futuras exibem espera pela leitura do rosto, preservando a prioridade de erros, pausa e inicialização. Há regressões para os estados sem leitura, os dois limites de idade válida e as prioridades das mensagens.
 
 Os testes do worker executam o fluxo completo com observações sintéticas, incluindo ativação, ajuste, confirmação, perda de mão, soltura obrigatória e novo traço. Verificam também rosto sem espelhamento, falha facial preservando os recursos das mãos, encerramento dos detectores e rejeição de comandos antigos de cor, limpeza e zoom.
 
@@ -41,6 +46,6 @@ A validação foi realizada em um ambiente local Windows com as dependências fi
 
 ## Limitação
 
-Não houve validação dos novos gestos faciais com uma pessoa diante da webcam. Os limiares de olhos e sobrancelhas são iniciais; óculos, iluminação, posição, oclusões e diferenças entre expressões podem exigir ajuste. Testes sintéticos e carregamento do modelo não demonstram reconhecimento confiável de gestos reais de uma pessoa.
+Ainda não foi confirmada a execução completa e confiável do fluxo facial com uma pessoa diante da webcam. Os limiares de olhos e sobrancelhas são iniciais; óculos, iluminação, posição, oclusões e diferenças entre expressões podem exigir ajuste. Testes sintéticos e carregamento do modelo não demonstram reconhecimento confiável de gestos reais de uma pessoa.
 
 O aplicativo não grava frames de câmera nem cria cadastro ou identificação de rostos. Desenhos pessoais e modelos binários ficam fora do versionamento.

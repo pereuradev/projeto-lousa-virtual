@@ -161,6 +161,26 @@ class FaceCameraPipelineTests(unittest.TestCase):
         self.capture.release.assert_called_once_with()
         self.hands.close.assert_called_once_with()
 
+    def test_absent_face_reports_actionable_status_instead_of_available(self):
+        self.face.detect_for_video.return_value = face_result()
+        self.run_worker(frames=2)
+        for event in self.published:
+            safety = event[10]
+            self.assertFalse(safety.face_present)
+            self.assertEqual(safety.facial.status, "no_face")
+            self.assertIn("Rosto não detectado", safety.status)
+            self.assertNotIn("disponível", safety.status)
+
+    def test_paused_pipeline_keeps_detecting_face_without_rearming(self):
+        self.worker.set_controls_enabled(False)
+        self.run_worker(frames=3)
+        for event in self.published:
+            safety = event[10]
+            self.assertTrue(safety.face_present)
+            self.assertEqual(safety.facial.status, "paused")
+            self.assertFalse(safety.facial.active or safety.facial.blocked)
+            self.assertIn("pausado", safety.status)
+
     def test_face_inference_failure_is_closed_once_and_hand_pipeline_continues(self):
         self.hands.detect_for_video.return_value = SimpleNamespace(hand_landmarks=[hand()])
         self.face.detect_for_video.side_effect = RuntimeError("falha de inferência")

@@ -43,7 +43,7 @@ Todos os gestos de controle ficam suspensos em pausas, janelas de confirmação 
 
 ## Zoom com olhos e sobrancelhas
 
-1. Com o rosto inteiro visível, mantenha **somente o olho esquerdo fechado por 2 segundos contínuos**, deixando o direito aberto. Aguarde a indicação de ajuste de zoom. Esquerdo e direito correspondem à pessoa, independentemente da prévia espelhada.
+1. Com o rosto inteiro visível, olhe de frente e mantenha os dois olhos abertos até o indicador ficar pronto. Depois mantenha **somente o olho esquerdo fechado por 2 segundos contínuos**, deixando o direito aberto. A posição das sobrancelhas não impede a ativação. Aguarde a indicação de ajuste de zoom. Esquerdo e direito correspondem à pessoa, independentemente da prévia espelhada.
 2. **Abra os dois olhos e relaxe as sobrancelhas** antes de começar a ajustar. Esse intervalo neutro evita que o movimento de fechar o olho altere o zoom.
 3. **Levante as sobrancelhas para ampliar** e **franza/abaixe as sobrancelhas para reduzir**. Relaxe para parar. A porcentagem indica a ampliação atual, entre **50% e 300%**.
 4. Para confirmar, mantenha **somente o olho direito fechado por 2 segundos contínuos**, deixando o esquerdo aberto. O zoom escolhido é mantido e o aplicativo retorna ao desenho. Solte a pinça antes de retomar um traço.
@@ -53,6 +53,8 @@ Uma piscada rápida ou os dois olhos fechados não completam os comandos. Durant
 Os controles **−**, **+** e **Restaurar visão** também funcionam com o mouse. Restaurar volta a **100%**, que encaixa a lousa inteira na área disponível. O zoom é centralizado: em ampliações maiores, as bordas ficam fora da visualização. O zoom não altera os pixels do desenho, a espessura real do traço, o histórico nem o PNG exportado, que sempre contém a lousa completa.
 
 Esta versão usa limiares iniciais para olhos e sobrancelhas. A sensibilidade precisa ser conferida com a pessoa diante da webcam; óculos, iluminação, posição do rosto e diferenças entre expressões podem influenciar a leitura. Se o modelo facial estiver ausente ou inválido, execute **Instalar ou reparar.cmd**; os recursos com mãos e mouse permanecem disponíveis.
+
+Se o zoom não ativar, consulte o indicador facial: ele informa se o rosto está fora do enquadramento, se os olhos precisam abrir para preparar ou se o outro olho está fechando junto. **Fechar por dois segundos** significa manter um olho fechado continuamente, não piscar várias vezes. Após entrar no modo Zoom, o indicador também distingue a espera por olhos abertos e sobrancelhas relaxadas do momento em que o ajuste já está pronto.
 
 ## Controles
 
