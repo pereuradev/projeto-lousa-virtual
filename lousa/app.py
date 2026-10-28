@@ -15,8 +15,6 @@ from PIL import Image, ImageTk
 from .camera import CameraWorker, diagnose
 from .drawing import Board, GestureFilter
 from .controls import ControlState
-from .facial import FacialState, facial_status_message
-from .viewport import Viewport
 
 ROOT = Path(__file__).resolve().parents[1]
 BG, PANEL, TEXT, MUTED, ACCENT = "#f3f3ef", "#ffffff", "#252a27", "#68716b", "#32694e"
@@ -35,10 +33,6 @@ class App:
         root.configure(bg=BG)
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.board = Board()
-        self.viewport = Viewport(self.board.image.width, self.board.image.height)
-        self.facial_state = FacialState()
-        self.safety_revision = 0
-        self.mouse_active = False
         self.gesture = GestureFilter()
         self.worker: CameraWorker | None = None
         self.retired: list[CameraWorker] = []
@@ -55,8 +49,6 @@ class App:
         self.image_box = (0, 0, 1, 1)
         self.status = tk.StringVar(value="Pronto para desenhar com o mouse")
         self.hand_status = tk.StringVar(value="Câmera desconectada")
-        self.face_status = tk.StringVar(value="Zoom facial: conecte a câmera")
-        self.zoom_label = tk.StringVar(value="100%")
         self.tool_label = tk.StringVar(value="Caneta · Preto")
         self.width = tk.IntVar(value=8)
         self.camera_index = tk.StringVar(value=str(camera))
@@ -113,47 +105,30 @@ class App:
         side = tk.Frame(body, bg=BG, width=224)
         side.pack(side="right", fill="y", padx=(18, 0))
         side.pack_propagate(False)
-        tk.Label(side, text="Câmera", fg=TEXT, bg=BG, font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 6))
+        tk.Label(side, text="Câmera", fg=TEXT, bg=BG, font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 10))
         self.preview_photo = ImageTk.PhotoImage(Image.new("RGB", PREVIEW_SIZE, PREVIEW_BG))
         self.preview = tk.Label(side, image=self.preview_photo, text="Câmera desligada",
                                 compound="center", bg=PREVIEW_BG, fg="#c9d1cb",
                                 font=("Segoe UI", 10), width=PREVIEW_SIZE[0], height=PREVIEW_SIZE[1])
         self.preview.pack(anchor="w")
         tk.Label(side, textvariable=self.hand_status, fg=MUTED, bg=BG,
-                 font=("Segoe UI", 9), wraplength=208, height=2, anchor="nw",
-                 justify="left").pack(anchor="w", fill="x", pady=(6, 2))
+                 font=("Segoe UI", 9), wraplength=208, height=3, anchor="nw",
+                 justify="left").pack(anchor="w", fill="x", pady=(10, 4))
         camrow = tk.Frame(side, bg=BG)
-        camrow.pack(fill="x", pady=(0, 4))
+        camrow.pack(fill="x", pady=(0, 8))
         tk.Label(camrow, text="Fonte", bg=BG, fg=MUTED, font=("Segoe UI", 9)).pack(side="left")
         tk.Spinbox(camrow, from_=0, to=9, textvariable=self.camera_index, width=3,
                    font=("Segoe UI", 10), relief="solid", borderwidth=1).pack(side="left", padx=7)
         self.connect_button = self.button(camrow, "Conectar", self.connect)
         self.connect_button.pack(side="left")
-        zoomrow = tk.Frame(side, bg=BG)
-        zoomrow.pack(fill="x", padx=(0, 16), pady=(0, 4))
-        zoom_minus = self.button(zoomrow, "−", lambda: self.set_zoom(self.viewport.zoom / 1.1))
-        zoom_minus.configure(pady=3)
-        zoom_minus.pack(side="left")
-        tk.Label(zoomrow, textvariable=self.zoom_label, fg=TEXT, bg=BG,
-                 font=("Segoe UI", 10, "bold"), width=6).pack(side="left", expand=True)
-        zoom_plus = self.button(zoomrow, "+", lambda: self.set_zoom(self.viewport.zoom * 1.1))
-        zoom_plus.configure(pady=3)
-        zoom_plus.pack(side="right")
-        viewrow = tk.Frame(side, bg=BG)
-        viewrow.pack(fill="x", padx=(0, 16), pady=(0, 4))
-        self.pause_button = self.button(viewrow, "Pausar gestos", self.pause)
-        self.pause_button.configure(font=("Segoe UI", 9), padx=4, pady=4)
-        self.pause_button.pack(side="left")
-        restore_view = self.button(viewrow, "Restaurar visão", lambda: self.set_zoom(1.0))
-        restore_view.configure(font=("Segoe UI", 9), padx=4, pady=4)
-        restore_view.pack(side="right")
-        tk.Label(side, textvariable=self.face_status, fg=MUTED, bg=BG,
-                 font=("Segoe UI", 8), wraplength=208, height=3, anchor="nw",
-                 justify="left").pack(anchor="w", pady=(2, 4))
-        tk.Frame(side, bg=LINE, height=1).pack(fill="x", padx=(0, 16), pady=(0, 6))
-        tk.Label(side, text="Cores: joinha 1 s; dedos 5 s.\nLimpar: 2 mãos abertas, 2 s.\nZoom facial: Ajuda (F1).",
+        self.pause_button = self.button(side, "Pausar gestos", self.pause)
+        self.pause_button.pack(fill="x", padx=(0, 16), pady=(0, 20))
+        tk.Frame(side, bg=LINE, height=1).pack(fill="x", padx=(0, 16), pady=(0, 15))
+        tk.Label(side, text="Gestos", fg=TEXT, bg=BG,
+                 font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        tk.Label(side, text="Cores: joinha por 1 s.\nDepois, 1–5 dedos por 5 s.\nLimpar: duas mãos abertas, 2 s.",
                  fg=MUTED, bg=BG, font=("Segoe UI", 9), justify="left",
-                 wraplength=208).pack(anchor="w")
+                 wraplength=208).pack(anchor="w", pady=(5, 0))
         board_frame = tk.Frame(body, bg=PANEL, highlightbackground=LINE, highlightthickness=1)
         board_frame.pack(side="left", fill="both", expand=True)
         self.canvas = tk.Canvas(board_frame, bg="#e9ece7", highlightthickness=0, cursor="crosshair")
@@ -163,7 +138,7 @@ class App:
         self.canvas.bind("<Configure>", lambda _: self.render())
         self.canvas.bind("<ButtonPress-1>", self.mouse_begin)
         self.canvas.bind("<B1-Motion>", self.mouse_move)
-        self.root.bind("<ButtonRelease-1>", self.mouse_end)
+        self.root.bind("<ButtonRelease-1>", lambda _: self.end_stroke())
         self.control_progress = tk.Canvas(board_frame, bg=LINE, height=4, highlightthickness=0)
         self.control_progress.pack(fill="x")
         self.control_progress.bind("<Configure>", lambda _: self._render_control_feedback())
@@ -179,7 +154,6 @@ class App:
         self.select_color(0)
 
     def _resize_board(self, event):
-        self.end_stroke()
         self.render()
         self.control_label.configure(wraplength=max(200, event.width - 24))
 
@@ -200,17 +174,6 @@ class App:
                 "LIMPEZA — DUAS MÃOS ABERTAS POR 2 SEGUNDOS\n"
                 "Feche ou retire uma mão antes de completar para cancelar.\n"
                 "No modo Cores, uma mão aberta escolhe Roxo; não limpa. Desfazer recupera o desenho.\n\n"
-                "ZOOM FACIAL — ESQUERDA E DIREITA DA PESSOA\n"
-                "Abra os dois olhos; depois mantenha só o ESQUERDO fechado por 2 s.\n"
-                "Reabra os olhos e relaxe as sobrancelhas antes de ajustar.\n"
-                "Levante as sobrancelhas para ampliar; franza/retraia (aproxime e abaixe) para reduzir.\n"
-                "Ajustes funcionam com os dois olhos abertos.\n"
-                "Mantenha só o olho DIREITO fechado por 2 s para confirmar.\n"
-                "Dois olhos fechados não ativam nem confirmam.\n"
-                "O desenho, as cores e a limpeza aguardam desde o início da ativação.\n"
-                "Solte a pinça após entrar e sair. Perder o rosto, pausar, abrir Ajuda ou usar\n"
-                "o mouse encerra o modo e mantém o zoom. A visão vai de 50% a 300%;\n"
-                "Restaurar visão = 100% (encaixar). Zoom não altera o PNG nem os traços.\n\n"
                 "ATALHOS\n1–5: cores   E: borracha   B: caneta   +/−: espessura\n"
                 "Z ou Ctrl+Z: desfazer   C: limpar   S: salvar\n"
                 "Espaço: pausar gestos   Esc: fechar   F1: ajuda\n\n"
@@ -223,49 +186,19 @@ class App:
         if self.closed:
             return
         cw, ch = max(self.canvas.winfo_width(), 2), max(self.canvas.winfo_height(), 2)
-        viewport = self._viewport()
-        if viewport.set_size(cw, ch):
-            self.end_stroke()
-        self.image_box = viewport.image_box
-        visible, (x, y) = viewport.render(self.board.image)
-        self.photo = ImageTk.PhotoImage(visible)
+        scale = min(cw / self.board.image.width, ch / self.board.image.height)
+        w, h = max(1, int(self.board.image.width * scale)), max(1, int(self.board.image.height * scale))
+        x, y = (cw - w) // 2, (ch - h) // 2
+        self.image_box = (x, y, w, h)
+        self.photo = ImageTk.PhotoImage(self.board.image.resize((w, h), Image.Resampling.BILINEAR))
         self.canvas.itemconfigure(self.board_item, image=self.photo)
         self.canvas.coords(self.board_item, x, y)
 
     def point(self, x, y):
-        return self._viewport().canvas_to_board(x, y)
-
-    def _viewport(self):
-        if not hasattr(self, "viewport"):
-            # Also supports headless callers that construct only drawing state.
-            _, _, width, height = self.image_box
-            self.viewport = Viewport(self.board.image.width, self.board.image.height,
-                                     max(1, int(width)), max(1, int(height)))
-        return self.viewport
-
-    def _cancel_facial(self):
-        self.facial_state = FacialState()
-        if self.worker:
-            self.worker.cancel_facial()
-        if hasattr(self, "mode_name"):
-            self._control_feedback(ControlState())
-
-    def set_zoom(self, value, facial=False):
-        if not facial:
-            self._cancel_facial()
-        if self._viewport().set_zoom(value):
-            self.end_stroke()
-            self.canvas.itemconfigure(self.cursor, state="hidden")
-            self.render()
-        if hasattr(self, "zoom_label"):
-            self.zoom_label.set(f"{self.viewport.zoom:.0%}")
-
-    def mouse_end(self, event=None):
-        if getattr(self, "mouse_active", False):
-            self.mouse_active = False
-            self.gesture_ready = False
-        self.end_stroke()
-        self._sync_controls()
+        bx, by, w, h = self.image_box
+        if not bx <= x < bx + w or not by <= y < by + h:
+            return None
+        return ((x - bx) / w * self.board.image.width, (y - by) / h * self.board.image.height)
 
     def end_stroke(self):
         self.board.end()
@@ -281,9 +214,6 @@ class App:
         self.render()
 
     def mouse_begin(self, event):
-        self.mouse_active = True
-        self._cancel_facial()
-        self._sync_controls()
         self.canvas.focus_set()
         self.gesture.reset()
         self.end_stroke()
@@ -321,11 +251,9 @@ class App:
         if not hasattr(self, "gesture_palette"):
             return
         state, palette = self.control_state, self.gesture_palette
-        face = getattr(self, "facial_state", FacialState())
-        progress = face.progress if face.blocked else state.progress
         width = max(palette.winfo_width(), 5)
         bar_width = self.control_progress.winfo_width() if hasattr(self, "control_progress") else 0
-        signature = (state.mode, face.mode, state.color_index, round(progress, 2), self.color,
+        signature = (state.mode, state.color_index, round(state.progress, 2), self.color,
                      self.eraser, width, bar_width)
         if getattr(self, "_palette_signature", None) == signature:
             return
@@ -348,31 +276,12 @@ class App:
         if hasattr(self, "control_progress"):
             bar = self.control_progress
             bar.delete("all")
-            if progress:
-                bar.create_rectangle(0, 0, bar_width * progress, 4,
+            if state.progress:
+                bar.create_rectangle(0, 0, bar_width * state.progress, 4,
                                      fill="#b24e36" if state.mode.startswith("clear") else ACCENT, outline="")
 
     def _control_feedback(self, state):
         self.control_state = state
-        face = getattr(self, "facial_state", FacialState())
-        if face.blocked:
-            waiting = face.mode == "zoom" and face.status in ("eyes_need_open", "relax_brows", "wait_neutral")
-            name = {"arming_zoom": "Ativando zoom", "zoom": "Preparando ajustes" if waiting else "Ajustando zoom",
-                    "confirming_zoom": "Confirmando zoom"}[face.mode]
-            self.mode_name.set(name)
-            if face.mode == "zoom":
-                message = {
-                    "eyes_need_open": "Abra os dois olhos. Os ajustes aguardam essa abertura; o zoom atual está mantido.",
-                    "relax_brows": "Relaxe as sobrancelhas e mantenha os dois olhos abertos para liberar os ajustes e a confirmação.",
-                    "wait_neutral": "Mantenha os dois olhos abertos e as sobrancelhas relaxadas até os ajustes ficarem prontos.",
-                    "left_not_open": "Para confirmar, mantenha o olho ESQUERDO aberto e só o DIREITO fechado por 2 segundos.",
-                }.get(face.status, "Ajustes prontos. Sobrancelhas: levante para ampliar; franza para reduzir. Só o DIREITO fechado por 2 s confirma.")
-            else:
-                eye = "esquerdo" if face.mode == "arming_zoom" else "direito"
-                message = f"{name} · olho {eye}: {face.progress * 2:.1f} de 2 segundos · outro olho aberto"
-            self.control_message.set(message)
-            self._render_control_feedback()
-            return
         self.mode_name.set("Ativando cores" if state.mode == "arming_color" else
                            "Cores ativadas" if state.color_mode else
                            "Limpeza" if state.mode.startswith("clear") else "Desenho")
@@ -398,31 +307,10 @@ class App:
         self.control_message.set(message)
         self._render_control_feedback()
 
-    def _face_feedback(self, safety, enabled, now=None):
-        if not hasattr(self, "face_status"):
-            return
-        if safety.status.startswith("Zoom facial indisponível"):
-            message = safety.status
-        elif not enabled:
-            message = ("Zoom facial pausado.\nRetome os gestos para usar." if self.paused
-                       else "Zoom facial suspenso.\nTermine o uso do mouse ou da Ajuda.")
-        elif safety.status == "Zoom facial iniciando":
-            message = safety.status
-        elif not 0 <= (time.monotonic() if now is None else now) - safety.captured_at <= 0.5:
-            message = "Aguardando leitura do rosto.\nSe persistir, reconecte a câmera."
-        else:
-            message = facial_status_message(safety.facial, face_present=safety.face_present)
-        self.face_status.set(message)
-
     def _sync_controls(self):
-        enabled = not (self.paused or self.dialog_open or self.closed or self.source == "mouse"
-                       or getattr(self, "mouse_active", False))
-        if not enabled:
-            self.facial_state = FacialState()
+        enabled = not (self.paused or self.dialog_open or self.closed or self.source == "mouse")
         if self.worker:
-            epoch = self.worker.set_controls_enabled(enabled)
-            self._face_feedback(self.worker.safety_context(), enabled)
-            return enabled, epoch
+            return enabled, self.worker.set_controls_enabled(enabled)
         return enabled, None
 
     def _apply_control_actions(self, enabled, epoch, now):
@@ -430,22 +318,10 @@ class App:
             return
         while True:
             try:
-                queued = self.worker.actions.get_nowait()
-                action_epoch, captured_at, action, value = queued[:4]
+                action_epoch, captured_at, action, value = self.worker.actions.get_nowait()
             except queue.Empty:
                 break
-            if not enabled or action_epoch != epoch or not 0 <= now - captured_at <= 0.5:
-                continue
-            safety = self.worker.safety_context()
-            if action == "zoom":
-                generation, factor = value
-                if (safety.epoch == epoch and safety.facial.active
-                        and safety.facial.generation == generation
-                        and 0 <= now - safety.captured_at <= 0.5):
-                    self.set_zoom(self._viewport().zoom * factor, facial=True)
-                continue
-            action_revision = queued[4] if len(queued) > 4 else 0
-            if safety.facial.blocked or safety.release_required or action_revision != safety.revision:
+            if not enabled or action_epoch != epoch or now - captured_at > 0.5:
                 continue
             self.end_stroke()
             self.gesture_ready = False
@@ -514,7 +390,6 @@ class App:
         self.paused = not self.paused
         self.end_stroke()
         self.gesture.reset()
-        self.gesture_ready = False
         self._sync_controls()
         self._control_feedback(ControlState())
         self.canvas.itemconfigure(self.cursor, state="hidden")
@@ -528,15 +403,11 @@ class App:
             self.worker = None
         self.end_stroke()
         self.gesture.reset()
-        self.facial_state = FacialState()
-        self.gesture_ready = False
         self.canvas.itemconfigure(self.cursor, state="hidden")
         self.preview_photo = ImageTk.PhotoImage(Image.new("RGB", PREVIEW_SIZE, PREVIEW_BG))
         self.preview.configure(image=self.preview_photo, text="Câmera desconectada")
         self.connect_button.configure(text="Conectar")
         self.hand_status.set("Câmera desconectada")
-        if hasattr(self, "face_status"):
-            self.face_status.set("Zoom facial: conecte a câmera")
         self._control_feedback(ControlState())
 
     def connect(self):
@@ -556,12 +427,9 @@ class App:
             return
         self.worker = CameraWorker(index, ROOT / "models" / "hand_landmarker.task")
         self.gesture_segment = None
-        self.safety_revision = 0
-        self.facial_state = FacialState()
         self.worker.start()
         self.last_hand_time = time.monotonic()
         self.hand_status.set("Iniciando câmera e detector…")
-        self.face_status.set("Zoom facial iniciando")
         self.connect_button.configure(text="Desconectar")
         self.status.set("Abrindo câmera · o mouse já pode ser usado")
 
@@ -570,26 +438,6 @@ class App:
             return
         now = time.monotonic()
         enabled, epoch = self._sync_controls()
-        safety = self.worker.safety_context() if self.worker else None
-        if safety:
-            if safety.facial.blocked and now - safety.captured_at > 0.5:
-                self._cancel_facial()
-                enabled, epoch = self._sync_controls()
-                safety = self.worker.safety_context()
-            if safety.revision != getattr(self, "safety_revision", 0):
-                self.safety_revision = safety.revision
-                if self.source == "gesture":
-                    self.end_stroke()
-                if safety.release_required or safety.facial.blocked:
-                    self.facial_release_wait = True
-                    self.gesture_ready = False
-            if getattr(self, "facial_release_wait", False) and not safety.release_required and not safety.facial.blocked:
-                # The worker saw a real separated pinch after the session.
-                # This durable latch survives video queue replacement.
-                self.facial_release_wait = False
-                self.gesture_ready = True
-            self.facial_state = safety.facial if enabled else FacialState()
-            self._face_feedback(safety, enabled)
         self._apply_control_actions(enabled, epoch, now)
         latest = None
         if self.worker:
@@ -598,27 +446,23 @@ class App:
                     latest = self.worker.events.get_nowait()
                 except queue.Empty:
                     break
-        if latest is None and safety is not None:
-            self._control_feedback(self.control_state)
         if latest and latest[0] == "error":
             self.disconnect()
             self.status.set(latest[1])
             self.hand_status.set("Câmera indisponível · use o mouse")
         elif latest and latest[0] == "frame":
-            _, rgb, hands, fps, point, pinch, segment, control, frame_epoch, captured_at = latest[:10]
+            _, rgb, hands, fps, point, pinch, segment, control, frame_epoch, captured_at = latest
             self.last_hand_time = captured_at
             preview = Image.fromarray(rgb)
             preview.thumbnail(PREVIEW_SIZE)
             self.preview_photo = ImageTk.PhotoImage(preview)
             self.preview.configure(image=self.preview_photo, text="")
-            face_blocks = bool(safety and (safety.facial.blocked or safety.release_required))
-            if not pinch and not face_blocks and not getattr(self, "facial_release_wait", False):
+            if not pinch:
                 self.gesture_ready = True
-            valid_control = (enabled and epoch == frame_epoch and 0 <= now - captured_at <= 0.5
-                             and (len(latest) <= 10 or not safety or latest[10].revision == safety.revision))
+            valid_control = enabled and epoch == frame_epoch and now - captured_at <= 0.5
             self._control_feedback(control if valid_control else ControlState())
             if (self.paused or self.source == "mouse" or self.dialog_open or not self.gesture_ready
-                    or not valid_control or face_blocks):
+                    or not valid_control):
                 self.gesture.reset()
                 if self.source == "gesture":
                     self.end_stroke()
@@ -633,30 +477,22 @@ class App:
                         self.end_stroke()
                     self.canvas.itemconfigure(self.cursor, state="hidden")
                 elif point:
-                    viewport = self._viewport()
-                    x, y = viewport.normalized_to_canvas(*point)
-                    board_point = self.point(x, y)
-                    if board_point is None:
-                        if self.source == "gesture":
-                            self.end_stroke()
-                        self.canvas.itemconfigure(self.cursor, state="hidden")
-                    else:
-                        r = max(6, self.width.get() * viewport.scale / 2)
-                        self.canvas.coords(self.cursor, x - r, y - r, x + r, y + r)
-                        self.canvas.itemconfigure(self.cursor, state="normal", outline="#ef476f" if pinch else "#159b70")
-                        if pinch:
-                            self._draw(board_point, "gesture")
-                        elif self.source == "gesture":
-                            self.end_stroke()
+                    bx, by, w, h = self.image_box
+                    board_y = point[1]
+                    x, y = bx + point[0] * w, by + board_y * h
+                    r = max(6, self.width.get() * w / self.board.image.width / 2)
+                    self.canvas.coords(self.cursor, x - r, y - r, x + r, y + r)
+                    self.canvas.itemconfigure(self.cursor, state="normal", outline="#ef476f" if pinch else "#159b70")
+                    if pinch:
+                        self._draw((point[0] * (self.board.image.width - 1), board_y * (self.board.image.height - 1)), "gesture")
+                    elif self.source == "gesture":
+                        self.end_stroke()
                 else:
                     if self.source == "gesture":
                         self.end_stroke()
                     self.canvas.itemconfigure(self.cursor, state="hidden")
             if self.paused:
                 state = "Gestos pausados"
-            elif face_blocks:
-                state = ("Solte a pinça para voltar ao desenho" if not self.facial_state.blocked
-                         else "Zoom facial · controles das mãos suspensos")
             elif valid_control and control.mode == "arming_color":
                 state = "Joinha reconhecido · ativando cores"
             elif valid_control and control.color_mode:

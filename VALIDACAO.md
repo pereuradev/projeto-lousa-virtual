@@ -1,21 +1,8 @@
-# Validação — zoom por olhos e sobrancelhas
+# Validação — cores ativadas por joinha
 
-Atualização do Projeto Lousa Virtual em 28/10/2026.
+Atualização do Projeto Lousa Virtual em 26/10/2026.
 
-## Comportamento
-
-- O olho esquerdo da pessoa fechado continuamente por 2 segundos, com o direito aberto, ativa o modo Zoom.
-- A preparação inicial depende apenas dos dois olhos abertos; a posição basal das sobrancelhas não bloqueia a ativação. O indicador facial informa ausência do rosto e os motivos de espera, inclusive a neutralização necessária após entrar no modo.
-- Após abrir os dois olhos e relaxar as sobrancelhas, levantá-las amplia e franzir/abaixar reduz. Relaxar interrompe o ajuste.
-- O olho direito fechado continuamente por 2 segundos, com o esquerdo aberto, confirma a visualização.
-- O zoom é centralizado, entre 50% e 300%, com controles manuais e restauração para 100%.
-- Durante o ajuste facial, as mãos não desenham, não escolhem cores e não limpam. Uma soltura visível da pinça é exigida antes de retomar o desenho.
-- Perda de rosto, pausa, Ajuda e reconexão interrompem a sessão e seus temporizadores. O zoom atual permanece.
-- A imagem de rosto usada na inferência não é espelhada, preservando os lados da pessoa. A prévia e o rastreamento de mãos mantêm o espelhamento.
-- Falha no modelo facial não impede o uso com mãos ou mouse.
-- Zoom altera somente a visualização: desenho, histórico, espessura em pixels e PNG integral de 1280 × 800 permanecem independentes da ampliação.
-
-## Gestos anteriores preservados
+## Comportamento entregue
 
 - O aplicativo inicia em modo Desenho. Mostrar 1–5 dedos não seleciona cores nem bloqueia a preparação da pinça.
 - Um joinha (somente o polegar estendido e os outros quatro dedos dobrados) por 1 segundo contínuo ativa o modo Cores.
@@ -28,24 +15,12 @@ Atualização do Projeto Lousa Virtual em 28/10/2026.
 
 ## Verificações
 
-O modelo facial oficial, float16 versão 1, foi baixado do Google e teve seu SHA256 conferido. Os dois modelos reais foram carregados, executados sobre uma imagem preta em memória e fechados corretamente, sem câmera ou arquivos de imagem.
+**81 testes passaram**, incluindo 32 testes específicos de controles. Foram verificados: desenho padrão sem contagem, joinha por exatamente 1 s, soltura antes da contagem, cinco cores após 5 s, retorno automático, cancelamento por pinça/perda/pausa, trava contra reativar segurando joinha (inclusive após escolher Preto), espelhamento e geometria sintéticos, duas mãos, limpeza com Desfazer, filas e separação de traços.
 
-Os testes automatizados exercitam temporizadores e transições faciais com sinais sintéticos, transformações de coordenadas, preservação do desenho e comunicação entre câmera e interface. A suíte inclui os testes anteriores de pinça, cores por joinha, limpeza, histórico e PNG.
-
-**163 testes passaram, sem testes ignorados**, no Windows com os widgets Tk reais. São 81 verificações anteriores preservadas, 36 do controlador facial, 9 da geometria de zoom, 11 do transporte e segurança, 15 da interface e 11 da integração da câmera.
-
-A correção de ativação tem regressões específicas para sobrancelhas em posição basal acima do limite de neutralidade: isso não bloqueia mais o gesto inicial do olho esquerdo. A neutralidade após entrar no modo continua exigida. Os indicadores foram conferidos com 13 combinações de fase e motivo e dois erros de modelo, respeitando três linhas na lateral e duas no feedback da lousa em 1000 × 640.
-
-O aviso de prontidão também exige uma observação atual, com idade de até 0,5 segundo. Leituras vencidas ou futuras exibem espera pela leitura do rosto, preservando a prioridade de erros, pausa e inicialização. Há regressões para os estados sem leitura, os dois limites de idade válida e as prioridades das mensagens.
-
-Os testes do worker executam o fluxo completo com observações sintéticas, incluindo ativação, ajuste, confirmação, perda de mão, soltura obrigatória e novo traço. Verificam também rosto sem espelhamento, falha facial preservando os recursos das mãos, encerramento dos detectores e rejeição de comandos antigos de cor, limpeza e zoom.
-
-A interface foi conferida com widgets reais em 1000 × 640 e 1180 × 780 e em janela ampla. A captura visual de 1000 × 640 confirmou os controles de zoom, estado facial e instruções sem cortes. Foram conferidos os botões de ampliar e restaurar a visão, além da Ajuda com o fluxo facial. As revisões independentes de especificação e qualidade terminaram sem achados pendentes.
+A interface foi verificada com widgets reais nos tamanhos 1000 × 640, 1180 × 780 e 1920 × 1080: botões e lateral couberam. Foram verificados os rótulos dos modos, progresso, caneta, borracha, cinco cores e Ajuda suspendendo os gestos. A revisão final do fluxo não deixou achados pendentes.
 
 A validação foi realizada em um ambiente local Windows com as dependências fixadas neste repositório. Não houve gravação ou exportação de imagens da câmera.
 
 ## Limitação
 
-Ainda não foi confirmada a execução completa e confiável do fluxo facial com uma pessoa diante da webcam. Os limiares de olhos e sobrancelhas são iniciais; óculos, iluminação, posição, oclusões e diferenças entre expressões podem exigir ajuste. Testes sintéticos e carregamento do modelo não demonstram reconhecimento confiável de gestos reais de uma pessoa.
-
-O aplicativo não grava frames de câmera nem cria cadastro ou identificação de rostos. Desenhos pessoais e modelos binários ficam fora do versionamento.
+O joinha e as transições foram testados com landmarks e tempo simulados. Ainda é necessário conferir o novo gesto com uma pessoa diante da webcam; não se declara validação real dessa execução. Iluminação, mão inteira visível e dedos bem definidos influenciam o rastreamento.
